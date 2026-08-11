@@ -50,6 +50,26 @@
     }
     header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.3px; }
     header p  { font-size: .8rem; opacity: .75; margin-top: 2px; }
+    .header-user {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .header-user span {
+      font-size: .875rem; opacity: .9;
+    }
+    .header-user .badge-role {
+      background: rgba(255,255,255,.2);
+      border-radius: 20px; padding: 2px 10px;
+      font-size: .75rem; font-weight: 700; letter-spacing: .3px;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff; border-radius: 7px;
+      padding: 6px 14px; font-size: .82rem; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,.28); }
 
     /* ── Tabs ──────────────────────────────────────────────────── */
     .tabs-wrapper {
@@ -155,6 +175,16 @@
     .form-editing { border: 2px solid #d97706 !important; }
     .form-editing .card-header { background: #fffbeb; }
 
+    /* ── Mode lecture seule (ETUDIANT) ────────────────────────── */
+    .readonly-banner {
+      background: #fffbeb; border: 1px solid #fde68a;
+      color: #92400e; border-radius: 8px;
+      padding: 10px 16px; margin-bottom: 20px;
+      font-size: .85rem; font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .grid-full { grid-template-columns: 1fr !important; }
+
     /* ── Table ─────────────────────────────────────────────────── */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: .875rem; }
@@ -201,6 +231,13 @@
   <div>
     <h1>Gestion Foyer Universitaire</h1>
     <p>Administration des entités</p>
+  </div>
+  <div class="header-user" id="header-user" style="display:none">
+    <span id="header-username"></span>
+    <span class="badge-role" id="header-role"></span>
+    <form method="POST" action="/logout" id="logoutForm" style="margin:0">
+      <button type="submit" class="btn-logout">⏻ Déconnexion</button>
+    </form>
   </div>
 </header>
 
@@ -329,6 +366,27 @@ const ENTITIES = [
       { label: 'Foyer',    key: r => r.foyer ? r.foyer.nomFoyer : '—' },
     ],
   },
+  {
+    key: 'utilisateur',
+    label: 'Utilisateurs',
+    icon: '🔑',
+    endpoint: '/utilisateur',
+    idField: 'idUtilisateur',
+    adminOnly: true,           // onglet visible uniquement pour ADMIN
+    fields: [
+      { name: 'username', label: "Nom d'utilisateur", type: 'text',     required: true },
+      { name: 'password', label: 'Mot de passe',       type: 'password', required: true },
+      { name: 'role',     label: 'Rôle',               type: 'select',   required: true,
+        options: ['ADMIN', 'ETUDIANT'] },
+    ],
+    columns: [
+      { label: '#',       key: 'idUtilisateur' },
+      { label: 'Utilisateur', key: 'username' },
+      { label: 'Rôle',    key: r => r.role === 'ADMIN'
+          ? '<span class="badge badge-purple">ADMIN</span>'
+          : '<span class="badge badge-blue">ÉTUDIANT</span>' },
+    ],
+  },
 ];
 
 /* ════════════════════════════════════════════════════════════════
@@ -362,16 +420,30 @@ function toast(msg, type = 'ok') {
   _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
 
-/* API — extrait le message d'erreur du corps de la réponse serveur si disponible */
+/* Lit le cookie XSRF-TOKEN pour l'envoyer sur les requêtes d'écriture */
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/* API — ajoute X-XSRF-TOKEN sur POST/PUT/DELETE, gère 403 et messages métier */
 async function api(method, url, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
+  const headers = { 'Content-Type': 'application/json' };
+  if (['POST', 'PUT', 'DELETE'].includes(method)) {
+    const token = getCsrfToken();
+    if (token) headers['X-XSRF-TOKEN'] = token;
+  }
+  const opts = { method, headers };
   if (body !== undefined) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   if (!res.ok) {
-    // Le GlobalExceptionHandler renvoie toujours { "erreur": "...", "statut": n, "horodatage": "..." }
+    if (res.status === 403) {
+      throw new Error('Action réservée aux administrateurs.');
+    }
+    if (res.status === 401) {
+      window.location.href = '/login.html';
+      throw new Error('Session expirée.');
+    }
     let errMsg = 'Une erreur est survenue.';
     try {
       const errJson = JSON.parse(await res.text());
@@ -410,6 +482,13 @@ async function getChambres() {
 function invalidateChambreCache() { _chambreCache = null; }
 
 /* ════════════════════════════════════════════════════════════════
+   Rôle de l'utilisateur connecté (chargé au démarrage)
+═══════════════════════════════════════════════════════════════════ */
+let _currentRole = null; // 'ROLE_ADMIN' | 'ROLE_ETUDIANT'
+
+function isAdmin() { return _currentRole === 'ROLE_ADMIN'; }
+
+/* ════════════════════════════════════════════════════════════════
    Rendu des onglets
 ═══════════════════════════════════════════════════════════════════ */
 function buildTabs() {
@@ -417,10 +496,11 @@ function buildTabs() {
   const mainEl = $('main');
 
   ENTITIES.forEach((ent, i) => {
-    // Bouton d'onglet
+    // Les onglets adminOnly sont masqués pour les non-admins (révélés après chargement du rôle)
     const btn = document.createElement('button');
     btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
     btn.dataset.key = ent.key;
+    if (ent.adminOnly) btn.dataset.adminOnly = 'true';
     btn.innerHTML = `<span class="icon">${ent.icon}</span>${ent.label}`;
     btn.addEventListener('click', () => activateTab(ent.key));
     tabsEl.appendChild(btn);
@@ -445,9 +525,11 @@ function activateTab(key) {
 ═══════════════════════════════════════════════════════════════════ */
 function buildSection(ent) {
   const labelSingulier = ent.label.replace(/s$/, '').toLowerCase();
+  // Le formulaire est toujours généré dans le DOM ; il sera masqué en CSS/JS
+  // après le chargement du rôle pour éviter un flash de contenu.
   return `
-    <div class="grid">
-      <!-- Formulaire -->
+    <div class="grid" id="grid-${ent.key}">
+      <!-- Formulaire (masqué pour ETUDIANT) -->
       <div class="card" id="card-${ent.key}">
         <div class="card-header">
           <span style="font-size:20px">${ent.icon}</span>
@@ -476,6 +558,7 @@ function buildSection(ent) {
           <h2>Liste des ${ent.label.toLowerCase()}</h2>
         </div>
         <div class="card-body" style="padding:0">
+          <div id="banner-${ent.key}"></div>
           <div id="list-${ent.key}" class="table-wrap">
             <div class="empty"><span>⏳</span>Chargement…</div>
           </div>
@@ -483,6 +566,26 @@ function buildSection(ent) {
       </div>
     </div>
   `;
+}
+
+/** Applique les restrictions visuelles selon le rôle sur une section donnée. */
+function applyRoleUi(key) {
+  if (isAdmin()) return; // ADMIN : rien à masquer
+
+  // Masquer le formulaire et passer la liste en pleine largeur
+  const card = $(`card-${key}`);
+  if (card) card.style.display = 'none';
+
+  const grid = $(`grid-${key}`);
+  if (grid) grid.classList.add('grid-full');
+
+  // Bandeau informatif (inséré une seule fois)
+  const banner = $(`banner-${key}`);
+  if (banner && !banner.innerHTML) {
+    banner.innerHTML = `<div class="readonly-banner">
+      👁 Consultation seule — les modifications sont réservées aux administrateurs.
+    </div>`;
+  }
 }
 
 function buildFormFields(ent) {
@@ -622,21 +725,23 @@ function renderTable(ent, rows) {
     container.innerHTML = '<div class="empty"><span>📭</span>Aucune donnée pour le moment.</div>';
     return;
   }
-  const headers = [...ent.columns.map(c => `<th>${c.label}</th>`), '<th>Actions</th>'].join('');
+  const showActions = isAdmin();
+  const actionHeader = showActions ? '<th>Actions</th>' : '';
+  const headers = [...ent.columns.map(c => `<th>${c.label}</th>`), actionHeader].join('');
   const body = rows.map(row => {
     const cells = ent.columns.map(c => {
       const val = typeof c.key === 'function' ? c.key(row) : (row[c.key] ?? '—');
       return `<td>${val}</td>`;
     }).join('');
     const id = row[ent.idField];
-    // Sérialiser la ligne pour la passer au onclick (échappe les guillemets)
     const rowJson = encodeURIComponent(JSON.stringify(row));
-    return `<tr>${cells}<td style="white-space:nowrap">
+    const actionCell = showActions ? `<td style="white-space:nowrap">
       <button class="btn btn-warning" style="margin-right:5px"
               onclick="editRow('${ent.key}', '${rowJson}')">✏️ Modif.</button>
       <button class="btn btn-danger"
               onclick="deleteRow('${ent.key}',${id})">🗑 Suppr.</button>
-    </td></tr>`;
+    </td>` : '';
+    return `<tr>${cells}${actionCell}</tr>`;
   }).join('');
   container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
 }
@@ -792,18 +897,59 @@ document.addEventListener('DOMContentLoaded', () => {
     if (form) form.addEventListener('submit', e => handleSubmit(ent.key, e));
   });
 
-  // Charger le premier onglet
-  const first = ENTITIES[0];
-  loadList(first.key);
-  populateDynamicSelects(first.key);
+  // Premier onglet et selects chargés après réception du rôle (dans fetch /api/me ci-dessous)
 
-  // Populate les selects dynamiques à chaque activation d'onglet
+  // Populate les selects dynamiques + restrictions UI à chaque activation d'onglet
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
       populateDynamicSelects(key);
+      applyRoleUi(key);
     });
   });
+
+  // Charger les infos de l'utilisateur connecté et les afficher dans le header
+  fetch('/api/me')
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data) return;
+      _currentRole = data.role; // 'ROLE_ADMIN' ou 'ROLE_ETUDIANT'
+      const roleLabel = isAdmin() ? 'Admin' : 'Étudiant';
+      $('header-username').textContent = '👤 ' + data.username;
+      $('header-role').textContent     = roleLabel;
+      $('header-user').style.display   = '';
+
+      // Onglets adminOnly : afficher seulement pour ADMIN
+      document.querySelectorAll('[data-admin-only]').forEach(btn => {
+        btn.style.display = isAdmin() ? '' : 'none';
+      });
+
+      // Appliquer les restrictions UI sur toutes les sections déjà construites
+      ENTITIES.forEach(ent => applyRoleUi(ent.key));
+
+      // Charger le premier onglet visible
+      const firstVisible = ENTITIES.find(e => !e.adminOnly || isAdmin());
+      if (firstVisible) {
+        activateTab(firstVisible.key);
+        populateDynamicSelects(firstVisible.key);
+      }
+    })
+    .catch(() => {});
+
+  // Injecter le token CSRF dans le formulaire de déconnexion
+  const logoutForm = $('logoutForm');
+  if (logoutForm) {
+    logoutForm.addEventListener('submit', function () {
+      const token = getCsrfToken();
+      if (token) {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = '_csrf';
+        input.value = token;
+        this.appendChild(input);
+      }
+    });
+  }
 });
 </script>
 </body>

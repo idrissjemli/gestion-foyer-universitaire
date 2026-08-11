@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion — Foyer Universitaire</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #2563eb;
+      --primary-dk: #1d4ed8;
+      --danger:     #ef4444;
+      --success:    #22c55e;
+      --text:       #1e293b;
+      --muted:      #64748b;
+      --border:     #e2e8f0;
+      --bg:         #f8fafc;
+      --card:       #ffffff;
+      --radius:     12px;
+      --shadow-lg:  0 4px 6px rgba(0,0,0,.07), 0 10px 30px rgba(0,0,0,.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 28px;
+      color: #fff;
+    }
+    .brand .logo {
+      width: 56px; height: 56px;
+      background: rgba(255,255,255,.2);
+      border-radius: 16px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+    .brand h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.3px; }
+    .brand p  { font-size: .85rem; opacity: .8; margin-top: 4px; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h2 {
+      font-size: 1.05rem; font-weight: 700; color: var(--text);
+    }
+    .card-header p {
+      font-size: .82rem; color: var(--muted); margin-top: 3px;
+    }
+
+    .card-body { padding: 24px 28px 28px; }
+
+    .alert {
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 500;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: .78rem; font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 16px; pointer-events: none;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px 10px 38px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: .9rem; color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 11px;
+      background: var(--primary);
+      color: #fff;
+      border: none; border-radius: 8px;
+      font-size: .95rem; font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      margin-top: 4px;
+    }
+    .btn-submit:hover  { background: var(--primary-dk); }
+    .btn-submit:active { transform: scale(.98); }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: .78rem;
+      color: rgba(255,255,255,.7);
+    }
+    .footer-note strong { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="brand">
+    <div class="logo">🏛️</div>
+    <h1>Foyer Universitaire</h1>
+    <p>Gestion des résidences universitaires</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Connexion</h2>
+      <p>Entrez vos identifiants pour accéder à l'application</p>
+    </div>
+    <div class="card-body">
+
+      <!-- Message d'erreur -->
+      <div id="msg-error" class="alert alert-error" style="display:none">
+        <span>⚠️</span> Identifiants incorrects. Veuillez réessayer.
+      </div>
+
+      <!-- Message de déconnexion -->
+      <div id="msg-logout" class="alert alert-success" style="display:none">
+        <span>✓</span> Vous avez été déconnecté avec succès.
+      </div>
+
+      <form method="POST" action="/login" id="loginForm">
+        <div class="form-group">
+          <label for="username">Nom d'utilisateur</label>
+          <div class="input-wrap">
+            <span class="icon">👤</span>
+            <input type="text" id="username" name="username"
+                   placeholder="admin ou etudiant"
+                   required autofocus autocomplete="username" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <div class="input-wrap">
+            <span class="icon">🔒</span>
+            <input type="password" id="password" name="password"
+                   placeholder="••••••••"
+                   required autocomplete="current-password" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Se connecter →</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Comptes de démo : <strong>admin</strong> / admin123 &nbsp;·&nbsp;
+    <strong>etudiant</strong> / etudiant123
+  </div>
+
+  <script>
+    // Afficher le bon message selon le paramètre d'URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('error'))  document.getElementById('msg-error').style.display  = 'flex';
+    if (params.has('logout')) document.getElementById('msg-logout').style.display = 'flex';
+  </script>
+</body>
+</html>
