@@ -1,5 +1,6 @@
 package esprit.tn.foyer_bi10.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,8 +19,15 @@ public class Chambre {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idChambre;
     private Long numeroChambre;
-    @Enumerated(EnumType.STRING) //string khater chaine de caractaire et ordinal chiffre fel base 0,1,2 w fel base tabda tehseb mel 0 maneha simple 0 et double 1 et triple 2
+    @Enumerated(EnumType.STRING)
     private TypeChambre typeC;
-    @OneToMany(cascade = CascadeType.ALL)
-    private Set<Bloc> Bloc;
+
+    // Une chambre appartient à un seul bloc (correction de la relation inversée)
+    @ManyToOne
+    private Bloc bloc;
+
+    // Une chambre peut avoir plusieurs réservations
+    @OneToMany(mappedBy = "chambre")
+    @JsonIgnore
+    private Set<Reservation> reservations;
 }

@@ -15,7 +15,7 @@ public class FoyerService implements IFoyerService {
     FoyerRepository foyerRepository;
 
     @Override
-    public Foyer addBloc(Foyer foyer) {
+    public Foyer addFoyer(Foyer foyer) {
         return foyerRepository.save(foyer);
     }
 

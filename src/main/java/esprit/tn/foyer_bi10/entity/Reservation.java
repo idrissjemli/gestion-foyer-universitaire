@@ -22,6 +22,10 @@ public class Reservation       {
     private  Date anneUniversitaire;
     private Boolean estValid;
     @ManyToMany(cascade = CascadeType.ALL)
-    private List<Etudiant> EtudiantList;
+    private List<Etudiant> etudiantList;
+
+    // Lien vers la chambre réservée (cœur du métier)
+    @ManyToOne
+    private Chambre chambre;
 
 }

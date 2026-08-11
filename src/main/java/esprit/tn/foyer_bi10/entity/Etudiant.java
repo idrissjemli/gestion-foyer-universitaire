@@ -1,5 +1,6 @@
 package esprit.tn.foyer_bi10.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,6 +26,7 @@ public class Etudiant {
     private String ecole ;
     private Date dateNaissance ;
     @ManyToMany(mappedBy="etudiantList",cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Reservation> reservationList;
 }
 

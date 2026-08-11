@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestion Foyer Universitaire</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #2563eb;
+      --primary-dk: #1d4ed8;
+      --primary-lt: #eff6ff;
+      --danger:     #ef4444;
+      --danger-dk:  #dc2626;
+      --success:    #22c55e;
+      --text:       #1e293b;
+      --muted:      #64748b;
+      --border:     #e2e8f0;
+      --bg:         #f8fafc;
+      --card:       #ffffff;
+      --radius:     10px;
+      --shadow:     0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+      --shadow-lg:  0 4px 6px rgba(0,0,0,.07), 0 10px 30px rgba(0,0,0,.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header .logo {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,.2);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.3px; }
+    header p  { font-size: .8rem; opacity: .75; margin-top: 2px; }
+
+    /* ── Tabs ──────────────────────────────────────────────────── */
+    .tabs-wrapper {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      overflow-x: auto;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .tabs { display: inline-flex; gap: 2px; }
+    .tab-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 16px 20px;
+      font-size: .875rem; font-weight: 500; color: var(--muted);
+      border-bottom: 3px solid transparent;
+      transition: color .15s, border-color .15s;
+      display: inline-flex; align-items: center; gap: 7px;
+      white-space: nowrap;
+    }
+    .tab-btn:hover   { color: var(--primary); }
+    .tab-btn.active  { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn .icon   { font-size: 16px; }
+
+    /* ── Main layout ───────────────────────────────────────────── */
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Toast ─────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: #1e293b; color: #fff;
+      padding: 12px 20px; border-radius: 8px;
+      font-size: .875rem; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      opacity: 0; pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      z-index: 999;
+      max-width: 340px;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.ok   { background: #166534; }
+    #toast.err  { background: #991b1b; }
+
+    /* ── Card ──────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .card-body { padding: 22px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Form ──────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block; font-size: .8rem; font-weight: 600;
+      color: var(--muted); margin-bottom: 5px; text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px; font-size: .9rem; color: var(--text);
+      background: #fff; transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px; border: none; border-radius: 7px;
+      font-size: .875rem; font-weight: 600; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dk); }
+    .btn-danger  { background: var(--danger);  color: #fff; padding: 5px 11px; font-size: .8rem; }
+    .btn-danger:hover  { background: var(--danger-dk); }
+    .btn-warning { background: #d97706; color: #fff; padding: 5px 11px; font-size: .8rem; }
+    .btn-warning:hover { background: #b45309; }
+    .btn-cancel  { background: #e2e8f0; color: var(--text); }
+    .btn-cancel:hover  { background: #cbd5e1; }
+    .form-editing { border: 2px solid #d97706 !important; }
+    .form-editing .card-header { background: #fffbeb; }
+
+    /* ── Table ─────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    thead tr { background: var(--primary-lt); }
+    thead th {
+      padding: 10px 14px; text-align: left; font-weight: 700;
+      color: var(--primary); font-size: .78rem; text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    tbody tr { border-top: 1px solid var(--border); transition: background .1s; }
+    tbody tr:hover { background: #f1f5f9; }
+    tbody td { padding: 11px 14px; vertical-align: middle; }
+
+    .badge {
+      display: inline-block; padding: 2px 9px; border-radius: 20px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+    .badge-yes    { background: #dcfce7; color: #166534; }
+    .badge-no     { background: #fee2e2; color: #991b1b; }
+
+    .empty {
+      text-align: center; padding: 40px 20px;
+      color: var(--muted); font-size: .9rem;
+    }
+    .empty span { font-size: 32px; display: block; margin-bottom: 8px; }
+
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏛️</div>
+  <div>
+    <h1>Gestion Foyer Universitaire</h1>
+    <p>Administration des entités</p>
+  </div>
+</header>
+
+<div class="tabs-wrapper">
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<main id="main"></main>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   Configuration des entités
+═══════════════════════════════════════════════════════════════════ */
+const ENTITIES = [
+  {
+    key: 'foyer',
+    label: 'Foyers',
+    icon: '🏠',
+    endpoint: '/foyer',
+    idField: 'idFoyer',
+    fields: [
+      { name: 'nomFoyer',      label: 'Nom du foyer',  type: 'text',   required: true },
+      { name: 'capaciteFoyer', label: 'Capacité',      type: 'number', required: true },
+    ],
+    columns: [
+      { label: '#',         key: 'idFoyer' },
+      { label: 'Nom',       key: 'nomFoyer' },
+      { label: 'Capacité',  key: 'capaciteFoyer' },
+    ],
+  },
+  {
+    key: 'bloc',
+    label: 'Blocs',
+    icon: '🧱',
+    endpoint: '/bloc',
+    idField: 'idBloc',
+    fields: [
+      { name: 'nomBloc',      label: 'Nom du bloc',  type: 'text',   required: true },
+      { name: 'capaciteBloc', label: 'Capacité',     type: 'number', required: true },
+      { name: 'foyer',        label: 'Foyer',        type: 'foyer-select', required: true },
+    ],
+    columns: [
+      { label: '#',         key: 'idBloc' },
+      { label: 'Nom',       key: 'nomBloc' },
+      { label: 'Capacité',  key: 'capaciteBloc' },
+      { label: 'Foyer',     key: r => r.foyer ? r.foyer.nomFoyer : '—' },
+    ],
+  },
+  {
+    key: 'chambre',
+    label: 'Chambres',
+    icon: '🛏️',
+    endpoint: '/chambre',
+    idField: 'idChambre',
+    fields: [
+      { name: 'numeroChambre', label: 'Numéro',     type: 'number',       required: true },
+      { name: 'typeC',         label: 'Type',       type: 'select',       required: true,
+        options: ['SIMPLE', 'DOUBLE', 'TRIPLE'] },
+      { name: 'bloc',          label: 'Bloc',       type: 'bloc-select',  required: true },
+    ],
+    columns: [
+      { label: '#',       key: 'idChambre' },
+      { label: 'Numéro',  key: 'numeroChambre' },
+      { label: 'Type',    key: r => typeBadge(r.typeC) },
+      { label: 'Bloc',    key: r => r.bloc ? r.bloc.nomBloc : '—' },
+    ],
+  },
+  {
+    key: 'etudiant',
+    label: 'Étudiants',
+    icon: '🎓',
+    endpoint: '/etudiant',
+    idField: 'idEtudiant',
+    fields: [
+      { name: 'nomEt',        label: 'Nom',             type: 'text',   required: true },
+      { name: 'prenomEt',     label: 'Prénom',          type: 'text',   required: true },
+      { name: 'cin',          label: 'CIN',             type: 'number', required: true },
+      { name: 'ecole',        label: 'École',           type: 'text',   required: true },
+      { name: 'dateNaissance',label: 'Date de naissance',type: 'date',  required: true },
+    ],
+    columns: [
+      { label: '#',               key: 'idEtudiant' },
+      { label: 'Nom',             key: r => `${r.nomEt} ${r.prenomEt}` },
+      { label: 'CIN',             key: 'cin' },
+      { label: 'École',           key: 'ecole' },
+      { label: 'Date naissance',  key: r => fmtDate(r.dateNaissance) },
+    ],
+  },
+  {
+    key: 'reservation',
+    label: 'Réservations',
+    icon: '📋',
+    endpoint: '/reservation',
+    idField: 'idReservation',
+    fields: [
+      { name: 'anneUniversitaire', label: 'Année universitaire', type: 'date',           required: true },
+      { name: 'estValid',          label: 'Validée',             type: 'checkbox',       required: false },
+      { name: 'chambre',           label: 'Chambre',             type: 'chambre-select', required: true },
+    ],
+    columns: [
+      { label: '#',                  key: 'idReservation' },
+      { label: 'Année universitaire',key: r => fmtDate(r.anneUniversitaire) },
+      { label: 'Chambre',            key: r => r.chambre ? `N°${r.chambre.numeroChambre} (${r.chambre.typeC})` : '—' },
+      { label: 'Statut',             key: r => r.estValid
+          ? '<span class="badge badge-yes">✓ Validée</span>'
+          : '<span class="badge badge-no">✗ Non validée</span>' },
+    ],
+  },
+  {
+    key: 'universite',
+    label: 'Universités',
+    icon: '🎓',
+    endpoint: '/universite',
+    idField: 'idUniversite',
+    fields: [
+      { name: 'nomUniversite', label: "Nom de l'université", type: 'text', required: true },
+      { name: 'adress',        label: 'Adresse',             type: 'text', required: true },
+      { name: 'foyer',         label: 'Foyer associé',       type: 'foyer-select', required: true },
+    ],
+    columns: [
+      { label: '#',        key: 'idUniversite' },
+      { label: 'Nom',      key: 'nomUniversite' },
+      { label: 'Adresse',  key: 'adress' },
+      { label: 'Foyer',    key: r => r.foyer ? r.foyer.nomFoyer : '—' },
+    ],
+  },
+];
+
+/* ════════════════════════════════════════════════════════════════
+   Helpers
+═══════════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+function fmtDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.toLocaleDateString('fr-FR');
+}
+
+function typeBadge(t) {
+  const map = {
+    SIMPLE: 'badge-blue',
+    DOUBLE: 'badge-green',
+    TRIPLE: 'badge-orange',
+  };
+  return `<span class="badge ${map[t] || 'badge-purple'}">${t || '—'}</span>`;
+}
+
+/* Toast */
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+/* API — extrait le message d'erreur du corps de la réponse serveur si disponible */
+async function api(method, url, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    // Le GlobalExceptionHandler renvoie toujours { "erreur": "...", "statut": n, "horodatage": "..." }
+    let errMsg = 'Une erreur est survenue.';
+    try {
+      const errJson = JSON.parse(await res.text());
+      if (errJson && typeof errJson.erreur === 'string' && errJson.erreur) {
+        errMsg = errJson.erreur;
+      }
+    } catch { /* parsing échoué → message générique conservé */ }
+    throw new Error(errMsg);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+/* Foyer cache pour les selects */
+let _foyerCache = null;
+async function getFoyers() {
+  if (!_foyerCache) _foyerCache = await api('GET', '/foyer/all');
+  return _foyerCache || [];
+}
+function invalidateFoyerCache() { _foyerCache = null; }
+
+/* Bloc cache pour les selects */
+let _blocCache = null;
+async function getBlocs() {
+  if (!_blocCache) _blocCache = await api('GET', '/bloc/all');
+  return _blocCache || [];
+}
+function invalidateBlocCache() { _blocCache = null; }
+
+/* Chambre cache pour les selects */
+let _chambreCache = null;
+async function getChambres() {
+  if (!_chambreCache) _chambreCache = await api('GET', '/chambre/all');
+  return _chambreCache || [];
+}
+function invalidateChambreCache() { _chambreCache = null; }
+
+/* ════════════════════════════════════════════════════════════════
+   Rendu des onglets
+═══════════════════════════════════════════════════════════════════ */
+function buildTabs() {
+  const tabsEl = $('tabs');
+  const mainEl = $('main');
+
+  ENTITIES.forEach((ent, i) => {
+    // Bouton d'onglet
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+    btn.dataset.key = ent.key;
+    btn.innerHTML = `<span class="icon">${ent.icon}</span>${ent.label}`;
+    btn.addEventListener('click', () => activateTab(ent.key));
+    tabsEl.appendChild(btn);
+
+    // Section
+    const sec = document.createElement('div');
+    sec.className = 'section' + (i === 0 ? ' active' : '');
+    sec.id = `sec-${ent.key}`;
+    sec.innerHTML = buildSection(ent);
+    mainEl.appendChild(sec);
+  });
+}
+
+function activateTab(key) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.key === key));
+  document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === `sec-${key}`));
+  loadList(key);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   HTML d'une section
+═══════════════════════════════════════════════════════════════════ */
+function buildSection(ent) {
+  const labelSingulier = ent.label.replace(/s$/, '').toLowerCase();
+  return `
+    <div class="grid">
+      <!-- Formulaire -->
+      <div class="card" id="card-${ent.key}">
+        <div class="card-header">
+          <span style="font-size:20px">${ent.icon}</span>
+          <h2 id="title-${ent.key}">Ajouter un·e ${labelSingulier}</h2>
+        </div>
+        <div class="card-body">
+          <form id="form-${ent.key}" autocomplete="off">
+            ${buildFormFields(ent)}
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button type="submit" class="btn btn-primary" id="btn-${ent.key}">
+                <span>＋</span> Ajouter
+              </button>
+              <button type="button" class="btn btn-cancel" id="btn-cancel-${ent.key}"
+                      style="display:none" onclick="cancelEdit('${ent.key}')">
+                ✕ Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Liste -->
+      <div class="card">
+        <div class="card-header">
+          <span style="font-size:20px">📄</span>
+          <h2>Liste des ${ent.label.toLowerCase()}</h2>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div id="list-${ent.key}" class="table-wrap">
+            <div class="empty"><span>⏳</span>Chargement…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildFormFields(ent) {
+  return ent.fields.map(f => {
+    if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+      return `<div class="form-group">
+        <label for="${ent.key}-${f.name}">${f.label}</label>
+        <select id="${ent.key}-${f.name}" name="${f.name}" ${f.required ? 'required' : ''}>
+          <option value="" disabled selected>— Choisir —</option>
+          ${opts}
+        </select>
+      </div>`;
+    }
+    if (f.type === 'foyer-select') {
+      return `<div class="form-group">
+        <label for="${ent.key}-${f.name}">${f.label}</label>
+        <select id="${ent.key}-${f.name}" name="${f.name}" ${f.required ? 'required' : ''}>
+          <option value="" disabled selected>— Chargement des foyers… —</option>
+        </select>
+      </div>`;
+    }
+    if (f.type === 'bloc-select') {
+      return `<div class="form-group">
+        <label for="${ent.key}-${f.name}">${f.label}</label>
+        <select id="${ent.key}-${f.name}" name="${f.name}" ${f.required ? 'required' : ''}>
+          <option value="" disabled selected>— Chargement des blocs… —</option>
+        </select>
+      </div>`;
+    }
+    if (f.type === 'chambre-select') {
+      return `<div class="form-group">
+        <label for="${ent.key}-${f.name}">${f.label}</label>
+        <select id="${ent.key}-${f.name}" name="${f.name}" ${f.required ? 'required' : ''}>
+          <option value="" disabled selected>— Chargement des chambres… —</option>
+        </select>
+      </div>`;
+    }
+    if (f.type === 'checkbox') {
+      return `<div class="form-group" style="display:flex;align-items:center;gap:10px;padding:4px 0">
+        <input type="checkbox" id="${ent.key}-${f.name}" name="${f.name}"
+               style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary)" />
+        <label for="${ent.key}-${f.name}" style="text-transform:none;font-size:.9rem;font-weight:500;color:var(--text);margin:0">${f.label}</label>
+      </div>`;
+    }
+    return `<div class="form-group">
+      <label for="${ent.key}-${f.name}">${f.label}</label>
+      <input type="${f.type}" id="${ent.key}-${f.name}" name="${f.name}"
+             placeholder="${f.label}" ${f.required ? 'required' : ''} />
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   État d'édition — stocke la ligne en cours de modification
+═══════════════════════════════════════════════════════════════════ */
+// { [key]: rowObject | null }
+const _editState = {};
+
+function enterEditMode(key, row) {
+  const ent = ENTITIES.find(e => e.key === key);
+  _editState[key] = row;
+
+  // Titre + style
+  const labelSingulier = ent.label.replace(/s$/, '').toLowerCase();
+  $(`title-${key}`).textContent = `Modifier un·e ${labelSingulier}`;
+  $(`card-${key}`).classList.add('form-editing');
+
+  // Bouton submit → Enregistrer ; bouton Annuler → visible
+  const btn = $(`btn-${key}`);
+  btn.innerHTML = '💾 Enregistrer';
+  btn.className = 'btn btn-warning';
+  $(`btn-cancel-${key}`).style.display = '';
+
+  // Remplir les champs
+  const form = $(`form-${key}`);
+  ent.fields.forEach(f => {
+    const el = form[f.name];
+    if (!el) return;
+    if (f.type === 'checkbox') {
+      el.checked = !!row[f.name];
+    } else if (f.type === 'foyer-select') {
+      el.value = row[f.name] ? row[f.name].idFoyer : '';
+    } else if (f.type === 'bloc-select') {
+      el.value = row[f.name] ? row[f.name].idBloc : '';
+    } else if (f.type === 'chambre-select') {
+      el.value = row[f.name] ? row[f.name].idChambre : '';
+    } else if (f.type === 'date' && row[f.name]) {
+      // Convertir timestamp/ISO en YYYY-MM-DD pour l'input date
+      const d = new Date(row[f.name]);
+      el.value = isNaN(d) ? '' : d.toISOString().slice(0, 10);
+    } else {
+      el.value = row[f.name] ?? '';
+    }
+  });
+}
+
+function cancelEdit(key) {
+  _editState[key] = null;
+  resetForm(key);
+}
+
+function resetForm(key) {
+  const ent = ENTITIES.find(e => e.key === key);
+  const labelSingulier = ent.label.replace(/s$/, '').toLowerCase();
+
+  $(`title-${key}`).textContent = `Ajouter un·e ${labelSingulier}`;
+  $(`card-${key}`).classList.remove('form-editing');
+
+  const btn = $(`btn-${key}`);
+  btn.innerHTML = '<span>＋</span> Ajouter';
+  btn.className = 'btn btn-primary';
+  btn.disabled = false;
+  $(`btn-cancel-${key}`).style.display = 'none';
+
+  $(`form-${key}`).reset();
+  _editState[key] = null;
+}
+/* ════════════════════════════════════════════════════════════════
+   Logique CRUD
+═══════════════════════════════════════════════════════════════════ */
+async function loadList(key) {
+  const ent = ENTITIES.find(e => e.key === key);
+  const container = $(`list-${key}`);
+  container.innerHTML = '<div class="empty"><span>⏳</span>Chargement…</div>';
+  try {
+    const data = await api('GET', `${ent.endpoint}/all`);
+    renderTable(ent, data || []);
+  } catch (e) {
+    container.innerHTML = `<div class="empty"><span>⚠️</span>Erreur de chargement : ${e.message}</div>`;
+  }
+}
+
+function renderTable(ent, rows) {
+  const container = $(`list-${ent.key}`);
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty"><span>📭</span>Aucune donnée pour le moment.</div>';
+    return;
+  }
+  const headers = [...ent.columns.map(c => `<th>${c.label}</th>`), '<th>Actions</th>'].join('');
+  const body = rows.map(row => {
+    const cells = ent.columns.map(c => {
+      const val = typeof c.key === 'function' ? c.key(row) : (row[c.key] ?? '—');
+      return `<td>${val}</td>`;
+    }).join('');
+    const id = row[ent.idField];
+    // Sérialiser la ligne pour la passer au onclick (échappe les guillemets)
+    const rowJson = encodeURIComponent(JSON.stringify(row));
+    return `<tr>${cells}<td style="white-space:nowrap">
+      <button class="btn btn-warning" style="margin-right:5px"
+              onclick="editRow('${ent.key}', '${rowJson}')">✏️ Modif.</button>
+      <button class="btn btn-danger"
+              onclick="deleteRow('${ent.key}',${id})">🗑 Suppr.</button>
+    </td></tr>`;
+  }).join('');
+  container.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+async function editRow(key, rowJson) {
+  const row = JSON.parse(decodeURIComponent(rowJson));
+  // S'assurer que les selects sont peuplés avant de présélectionner
+  await populateDynamicSelects(key);
+  enterEditMode(key, row);
+  // Scroll vers le formulaire sur mobile
+  $(`card-${key}`).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function deleteRow(key, id) {
+  if (!confirm('Confirmer la suppression ?')) return;
+  const ent = ENTITIES.find(e => e.key === key);
+  try {
+    await api('DELETE', `${ent.endpoint}/delete/${id}`);
+    if (key === 'foyer')   invalidateFoyerCache();
+    if (key === 'bloc')    invalidateBlocCache();
+    if (key === 'chambre') invalidateChambreCache();
+    toast(`Suppression effectuée.`, 'ok');
+    loadList(key);
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function handleSubmit(key, e) {
+  e.preventDefault();
+  const ent    = ENTITIES.find(en => en.key === key);
+  const form   = e.target;
+  const btn    = $(`btn-${key}`);
+  const isEdit = !!_editState[key];
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Envoi…';
+
+  // Construire le payload à partir des champs du formulaire
+  const payload = {};
+  ent.fields.forEach(f => {
+    if (f.type === 'foyer-select') {
+      const val = form[f.name].value;
+      payload[f.name] = val ? { idFoyer: Number(val) } : null;
+    } else if (f.type === 'bloc-select') {
+      const val = form[f.name].value;
+      payload[f.name] = val ? { idBloc: Number(val) } : null;
+    } else if (f.type === 'chambre-select') {
+      const val = form[f.name].value;
+      payload[f.name] = val ? { idChambre: Number(val) } : null;
+    } else if (f.type === 'checkbox') {
+      payload[f.name] = form[f.name].checked;
+    } else if (f.type === 'number') {
+      payload[f.name] = form[f.name].value !== '' ? Number(form[f.name].value) : null;
+    } else {
+      payload[f.name] = form[f.name].value || null;
+    }
+  });
+
+  // En mode édition, inclure l'identifiant dans le payload
+  if (isEdit) {
+    payload[ent.idField] = _editState[key][ent.idField];
+  }
+
+  try {
+    if (isEdit) {
+      await api('PUT', `${ent.endpoint}/update`, payload);
+      toast('Modification enregistrée !', 'ok');
+    } else {
+      await api('POST', `${ent.endpoint}/add`, payload);
+      toast('Ajout réussi !', 'ok');
+    }
+    if (key === 'foyer')   invalidateFoyerCache();
+    if (key === 'bloc')    invalidateBlocCache();
+    if (key === 'chambre') invalidateChambreCache();
+    resetForm(key);
+    loadList(key);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    // Libellé selon le mode (isEdit peut avoir changé via resetForm dans le try)
+    const stillEditing = !!_editState[key];
+    btn.innerHTML = stillEditing ? '💾 Enregistrer' : '<span>＋</span> Ajouter';
+    btn.className  = stillEditing ? 'btn btn-warning'  : 'btn btn-primary';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Alimentation des selects dynamiques (foyer, bloc, chambre)
+═══════════════════════════════════════════════════════════════════ */
+async function populateDynamicSelects(key) {
+  const ent = ENTITIES.find(e => e.key === key);
+
+  for (const f of ent.fields) {
+    if (!['foyer-select', 'bloc-select', 'chambre-select'].includes(f.type)) continue;
+    const sel = $(`${key}-${f.name}`);
+    if (!sel) continue;
+
+    let items = [];
+    let placeholder = '— Sélectionner —';
+
+    try {
+      if (f.type === 'foyer-select') {
+        items = await getFoyers();
+        placeholder = '— Sélectionner un foyer —';
+        sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+        items.forEach(foy => {
+          const opt = document.createElement('option');
+          opt.value = foy.idFoyer;
+          opt.textContent = `${foy.nomFoyer} (capacité : ${foy.capaciteFoyer})`;
+          sel.appendChild(opt);
+        });
+      } else if (f.type === 'bloc-select') {
+        items = await getBlocs();
+        placeholder = '— Sélectionner un bloc —';
+        sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+        items.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.idBloc;
+          opt.textContent = `${b.nomBloc} (capacité : ${b.capaciteBloc}${b.foyer ? ' · ' + b.foyer.nomFoyer : ''})`;
+          sel.appendChild(opt);
+        });
+      } else if (f.type === 'chambre-select') {
+        items = await getChambres();
+        placeholder = '— Sélectionner une chambre —';
+        sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+        items.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.idChambre;
+          opt.textContent = `N°${c.numeroChambre} — ${c.typeC}${c.bloc ? ' · ' + c.bloc.nomBloc : ''}`;
+          sel.appendChild(opt);
+        });
+      }
+      if (!items.length) {
+        sel.innerHTML = `<option value="" disabled selected>Aucune donnée disponible</option>`;
+      }
+    } catch {
+      sel.innerHTML = `<option value="" disabled selected>Erreur de chargement</option>`;
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Initialisation
+═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  buildTabs();
+
+  // Attacher les soumissions de formulaires
+  ENTITIES.forEach(ent => {
+    const form = $(`form-${ent.key}`);
+    if (form) form.addEventListener('submit', e => handleSubmit(ent.key, e));
+  });
+
+  // Charger le premier onglet
+  const first = ENTITIES[0];
+  loadList(first.key);
+  populateDynamicSelects(first.key);
+
+  // Populate les selects dynamiques à chaque activation d'onglet
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      populateDynamicSelects(key);
+    });
+  });
+});
+</script>
+</body>
+</html>

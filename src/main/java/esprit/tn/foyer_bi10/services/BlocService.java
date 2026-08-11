@@ -1,7 +1,7 @@
 package esprit.tn.foyer_bi10.services;
 
-
 import esprit.tn.foyer_bi10.entity.Bloc;
+import esprit.tn.foyer_bi10.exception.BusinessException;
 import esprit.tn.foyer_bi10.repositories.BlocRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,18 +10,21 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
-public class BlocService implements IBlocService{
+public class BlocService implements IBlocService {
 
     BlocRepository blocRepository;
+
     @Override
     public Bloc addBloc(Bloc bloc) {
+        if (bloc.getCapaciteBloc() == null || bloc.getCapaciteBloc() <= 0) {
+            throw new BusinessException("La capacité du bloc doit être supérieure à 0.");
+        }
         return blocRepository.save(bloc);
     }
 
     @Override
     public void deleteBloc(Long idBloc) {
         blocRepository.deleteById(idBloc);
-
     }
 
     @Override
@@ -30,7 +33,7 @@ public class BlocService implements IBlocService{
     }
 
     @Override
-    public List<Bloc> getALLBloc(Bloc bloc) {
+    public List<Bloc> getALLBloc() {
         return blocRepository.findAll();
     }
 }
